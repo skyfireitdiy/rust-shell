@@ -1,4 +1,4 @@
-use std::{collections::HashMap, vec};
+use std::{collections::HashMap, panic, vec};
 
 pub struct Shell {
     func_map: HashMap<String, u64>,
@@ -25,166 +25,104 @@ impl Shell {
     }
 
     pub fn run_command(&self, command_line: &String) -> Result<u64, String> {
-        let (command, arguments) =
-            split_command(command_line.trim()).ok_or("split command failed")?;
-        let arguments = parse_arguments(arguments.as_str());
+        panic::catch_unwind(|| {
+            let (command, arguments) =
+                split_command(command_line.trim()).ok_or("split command failed")?;
 
-        let addr = self
-            .func_map
-            .get(&command)
-            .ok_or(format!("{} not found", command))?;
+            let addr = self
+                .func_map
+                .get(&command)
+                .ok_or(format!("{} not found", command))?;
 
-        let mut argument_int64 = vec![];
+            let mut argument_int64 = vec![];
 
-        let mut str_args = vec![String::from(""); 10]; // 这个变量不能删除,需要这个vec保持对象的生命周期
-        let mut index = 0;
+            let mut str_args = vec![String::from(""); 10]; // 这个变量不能删除,需要这个vec保持对象的生命周期
+            let mut index = 0;
 
-        for a in arguments {
-            match a {
-                Argument::Str(s) => {
-                    str_args[index] = s.clone();
-                    argument_int64.push(unsafe { std::mem::transmute(&str_args[index]) });
-                    index += 1;
+            for a in parse_arguments(arguments.as_str()) {
+                match a {
+                    Argument::Str(s) => {
+                        str_args[index] = s.clone();
+                        argument_int64.push(unsafe { std::mem::transmute(&str_args[index]) });
+                        index += 1;
+                    }
+                    Argument::Int(i) => argument_int64.push(i as u64),
                 }
-                Argument::Int(i) => argument_int64.push(i as u64),
             }
-        }
 
-        match argument_int64.len() {
-            0 => Ok(create_fn_0(*addr)()),
-            1 => Ok(create_fn_1(*addr)(argument_int64[0])),
-            2 => Ok(create_fn_2(*addr)(argument_int64[0], argument_int64[1])),
-            3 => Ok(create_fn_3(*addr)(
-                argument_int64[0],
-                argument_int64[1],
-                argument_int64[2],
-            )),
-            4 => Ok(create_fn_4(*addr)(
-                argument_int64[0],
-                argument_int64[1],
-                argument_int64[2],
-                argument_int64[3],
-            )),
-            5 => Ok(create_fn_5(*addr)(
-                argument_int64[0],
-                argument_int64[1],
-                argument_int64[2],
-                argument_int64[3],
-                argument_int64[4],
-            )),
-            6 => Ok(create_fn_6(*addr)(
-                argument_int64[0],
-                argument_int64[1],
-                argument_int64[2],
-                argument_int64[3],
-                argument_int64[4],
-                argument_int64[5],
-            )),
-            7 => Ok(create_fn_7(*addr)(
-                argument_int64[0],
-                argument_int64[1],
-                argument_int64[2],
-                argument_int64[3],
-                argument_int64[4],
-                argument_int64[5],
-                argument_int64[6],
-            )),
-            8 => Ok(create_fn_8(*addr)(
-                argument_int64[0],
-                argument_int64[1],
-                argument_int64[2],
-                argument_int64[3],
-                argument_int64[4],
-                argument_int64[5],
-                argument_int64[6],
-                argument_int64[7],
-            )),
-            9 => Ok(create_fn_9(*addr)(
-                argument_int64[0],
-                argument_int64[1],
-                argument_int64[2],
-                argument_int64[3],
-                argument_int64[4],
-                argument_int64[5],
-                argument_int64[6],
-                argument_int64[7],
-                argument_int64[8],
-            )),
-            10 => Ok(create_fn_10(*addr)(
-                argument_int64[0],
-                argument_int64[1],
-                argument_int64[2],
-                argument_int64[3],
-                argument_int64[4],
-                argument_int64[5],
-                argument_int64[6],
-                argument_int64[7],
-                argument_int64[8],
-                argument_int64[9],
-            )),
-            _ => Err("too many arguments".to_string()),
-        }
+            macro_rules! call_func {
+                ($func:expr) => {
+                    Ok($func(*addr)())
+                };
+                ($func:expr,$($n:expr),*) => {
+                    Ok(
+                        $func(*addr)(
+                            $(argument_int64[$n],)+
+                        )
+                    )
+                };
+            }
+
+            match argument_int64.len() {
+                0 => call_func!(create_fn_0),
+                1 => call_func!(create_fn_1, 0),
+                2 => call_func!(create_fn_2, 0, 1),
+                3 => call_func!(create_fn_3, 0, 1, 2),
+                4 => call_func!(create_fn_4, 0, 1, 2, 3),
+                5 => call_func!(create_fn_5, 0, 1, 2, 3, 4),
+                6 => call_func!(create_fn_6, 0, 1, 2, 3, 4, 5),
+                7 => call_func!(create_fn_7, 0, 1, 2, 3, 4, 5, 6),
+                8 => call_func!(create_fn_8, 0, 1, 2, 3, 4, 5, 6, 7),
+                9 => call_func!(create_fn_9, 0, 1, 2, 3, 4, 5, 6, 7, 8),
+                10 => call_func!(create_fn_10, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9),
+                _ => Err("too many arguments".to_string()),
+            }
+        })
+        .map_err(|err| format!("run command err: {:?}", err))?
     }
 }
 
-fn create_fn_0(addr: u64) -> fn() -> u64 {
-    unsafe { std::mem::transmute(addr) }
+macro_rules! def_create_fn {
+    ($name:ident) => {
+        fn $name(addr:u64) -> fn() -> u64 {
+            unsafe { std::mem::transmute(addr) }
+        }
+    };
+    ($name:ident, $($param:ty),*) => {
+        fn $name(addr:u64) -> fn($($param,)+) -> u64 {
+            unsafe { std::mem::transmute(addr) }
+        }
+    };
 }
 
-fn create_fn_1(addr: u64) -> fn(u64) -> u64 {
-    unsafe { std::mem::transmute(addr) }
-}
-
-fn create_fn_2(addr: u64) -> fn(u64, u64) -> u64 {
-    unsafe { std::mem::transmute(addr) }
-}
-
-fn create_fn_3(addr: u64) -> fn(u64, u64, u64) -> u64 {
-    unsafe { std::mem::transmute(addr) }
-}
-
-fn create_fn_4(addr: u64) -> fn(u64, u64, u64, u64) -> u64 {
-    unsafe { std::mem::transmute(addr) }
-}
-
-fn create_fn_5(addr: u64) -> fn(u64, u64, u64, u64, u64) -> u64 {
-    unsafe { std::mem::transmute(addr) }
-}
-
-fn create_fn_6(addr: u64) -> fn(u64, u64, u64, u64, u64, u64) -> u64 {
-    unsafe { std::mem::transmute(addr) }
-}
-
-fn create_fn_7(addr: u64) -> fn(u64, u64, u64, u64, u64, u64, u64) -> u64 {
-    unsafe { std::mem::transmute(addr) }
-}
-
-fn create_fn_8(addr: u64) -> fn(u64, u64, u64, u64, u64, u64, u64, u64) -> u64 {
-    unsafe { std::mem::transmute(addr) }
-}
-
-fn create_fn_9(addr: u64) -> fn(u64, u64, u64, u64, u64, u64, u64, u64, u64) -> u64 {
-    unsafe { std::mem::transmute(addr) }
-}
-
-fn create_fn_10(addr: u64) -> fn(u64, u64, u64, u64, u64, u64, u64, u64, u64, u64) -> u64 {
-    unsafe { std::mem::transmute(addr) }
-}
+def_create_fn!(create_fn_0);
+def_create_fn!(create_fn_1, u64);
+def_create_fn!(create_fn_2, u64, u64);
+def_create_fn!(create_fn_3, u64, u64, u64);
+def_create_fn!(create_fn_4, u64, u64, u64, u64);
+def_create_fn!(create_fn_5, u64, u64, u64, u64, u64);
+def_create_fn!(create_fn_6, u64, u64, u64, u64, u64, u64);
+def_create_fn!(create_fn_7, u64, u64, u64, u64, u64, u64, u64);
+def_create_fn!(create_fn_8, u64, u64, u64, u64, u64, u64, u64, u64);
+def_create_fn!(create_fn_9, u64, u64, u64, u64, u64, u64, u64, u64, u64);
+def_create_fn!(
+    create_fn_10,
+    u64,
+    u64,
+    u64,
+    u64,
+    u64,
+    u64,
+    u64,
+    u64,
+    u64,
+    u64
+);
 
 #[derive(Debug)]
 enum Argument {
     Str(String),
     Int(i64),
-}
-
-impl PartialEq for Argument {
-    fn eq(&self, other: &Argument) -> bool {
-        match (self, other) {
-            (Argument::Str(s1), Argument::Str(s2)) => s1 == s2,
-            (Argument::Int(i1), Argument::Int(i2)) => i1 == i2,
-            _ => false,
-        }
-    }
 }
 
 fn parse_arguments(input: &str) -> Vec<Argument> {
