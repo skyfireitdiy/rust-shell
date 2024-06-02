@@ -1,6 +1,4 @@
-use std::io::{self, BufRead};
-
-use server::{reg_shell_cmd, Shell};
+use server::{reg_shell_cmd, Server, Shell};
 
 fn print_hello() {
     println!("Hello, world!");
@@ -31,9 +29,6 @@ fn add_seven(a: i64, b: i64, c: i64, d: i64, e: i64, f: i64, g: i64) -> i64 {
 }
 
 fn main() {
-    let mut stdin = io::stdin().lock();
-    let mut buf = String::new();
-
     let mut shell = Shell::new();
 
     reg_shell_cmd!(shell,
@@ -43,13 +38,10 @@ fn main() {
         {"add_seven", add_seven}
     );
 
-    while let Ok(_) = stdin.read_line(&mut buf) {
-        match shell.run_command(&buf) {
-            Ok(r) => {
-                println!("return: {}", r);
-            }
-            Err(e) => println!("{}", e),
-        }
-        buf.clear();
-    }
+    let _ = Server::new(
+        shell,
+        "/tmp/uds_cmd.sock".to_owned(),
+        "/tmp/uds_output.sock".to_owned(),
+    )
+    .run();
 }
