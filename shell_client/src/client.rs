@@ -1,9 +1,11 @@
-use rustyline::error::ReadlineError;
-use rustyline::DefaultEditor;
+use rustyline::{error::ReadlineError, DefaultEditor};
 use shell_core::*;
-use std::io::Write;
-use std::os::unix::net::UnixStream;
-use std::thread::{spawn, JoinHandle};
+use std::{
+    io::Write,
+    os::unix::net::UnixStream,
+    thread::{sleep, spawn, JoinHandle},
+    time::Duration,
+};
 
 pub struct Client {
     prefix: String,
@@ -59,14 +61,14 @@ impl Client {
         }
     }
 
-    fn make_uds_path(pid: u64) -> (String, String) {
+    fn make_uds_path(pid: &u64) -> (String, String) {
         (
             format!("/tmp/rust_shell_cmd_{}", pid),
             format!("/tmp/rust_shell_output_{}", pid),
         )
     }
 
-    fn pad(&mut self, args: Vec<Argument>) -> Result<(), String> {
+    fn pad(&mut self, args: &Vec<Argument>) -> Result<(), String> {
         if args.len() != 1 {
             return Err(format!("argument number error"));
         }
@@ -84,7 +86,7 @@ impl Client {
             }));
         }
 
-        let (cmd_path, output_path) = Self::make_uds_path(pids[0].1);
+        let (cmd_path, output_path) = Self::make_uds_path(&pids[0].1);
         self.cmd_channel = Some(UnixStream::connect(&cmd_path).map_err(|err| err.to_string())?);
         self.output_channel =
             Some(UnixStream::connect(&output_path).map_err(|err| err.to_string())?);
@@ -109,23 +111,20 @@ impl Client {
         Err("exit".to_owned())
     }
 
-    fn run_builtin_command(&mut self, cmd: String, args: Vec<Argument>) -> Result<(), String> {
+    fn run_builtin_command(&mut self, cmd: &String, args: &Vec<Argument>) -> Result<(), String> {
         match cmd.as_str() {
-            "pad" => self.pad(args),
+            "pad" => self.pad(&args),
             "exit" => Self::exit(),
             _ => Err("custom".to_owned()),
         }
     }
 
-    pub fn run_custom_command(&mut self, line: String) -> Result<(), String> {
+    pub fn run_custom_command(&mut self, line: &String) -> Result<(), String> {
         match self.cmd_channel {
             None => Err("not pad to process".to_owned()),
-            Some(ref mut cmd_channel) => {
-                println!("send: {}", line);
-                cmd_channel
-                    .write_all(line.as_bytes())
-                    .map_err(|err| err.to_string())
-            }
+            Some(ref mut cmd_channel) => cmd_channel
+                .write_all(line.as_bytes())
+                .map_err(|err| err.to_string()),
         }
     }
 
@@ -147,14 +146,15 @@ impl Client {
                     }
                     let _ = editor.add_history_entry(line.as_str());
                     if let Some((cmd, args)) = split_command(line.trim()) {
-                        if let Err(err) = self.run_builtin_command(cmd, parse_arguments(&args)) {
+                        if let Err(err) = self.run_builtin_command(&cmd, &parse_arguments(&args)) {
                             match err.as_str() {
                                 "exit" => break,
                                 "custom" => {
-                                    if let Err(err) = self.run_custom_command(line) {
+                                    if let Err(err) = self.run_custom_command(&line) {
                                         println!("Error: {}", err);
                                         self.npad()
                                     }
+                                    sleep(Duration::from_millis(10));
                                 }
                                 _ => {
                                     println!("Error: {}", err);

@@ -26,7 +26,7 @@ impl Shell {
         self.func_map.insert(name, addr);
     }
 
-    pub fn run_command(&self, command_line: &String) -> Result<u64, String> {
+    pub fn run_command(&self, command_line: &String) -> Result<(), String> {
         panic::catch_unwind(|| {
             let (command, arguments) =
                 split_command(command_line.trim()).ok_or("split command failed")?;
@@ -65,7 +65,8 @@ impl Shell {
                 };
             }
 
-            match argument_int64.len() {
+            println!("[begin to excel func {}]", command);
+            if let Ok(ret) = match argument_int64.len() {
                 0 => call_func!(create_fn_0),
                 1 => call_func!(create_fn_1, 0),
                 2 => call_func!(create_fn_2, 0, 1),
@@ -78,7 +79,10 @@ impl Shell {
                 9 => call_func!(create_fn_9, 0, 1, 2, 3, 4, 5, 6, 7, 8),
                 10 => call_func!(create_fn_10, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9),
                 _ => Err("too many arguments".to_string()),
+            } {
+                println!("[end to excel func {}]:{}", command, ret);
             }
+            Ok(())
         })
         .map_err(|err| format!("run command err: {:?}", err))?
     }

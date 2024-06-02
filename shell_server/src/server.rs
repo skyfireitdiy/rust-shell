@@ -38,17 +38,13 @@ impl Server {
         loop {
             let sz = conn.read(&mut buf).map_err(|err| err.to_string())?;
             let s = String::from_utf8(buf[0..sz].to_vec()).map_err(|err| err.to_string())?;
-            println!(
-                "recv: {}",
-                String::from_utf8(buf[0..sz].to_vec()).map_err(|err| err.to_string())?
-            );
             if let Err(err) = shell.run_command(&s) {
                 println!("Error: {}", err);
             }
         }
     }
 
-    fn cmd_thread(path: String, shell: Shell) -> Result<(), String> {
+    fn cmd_thread(path: &String, shell: &Shell) -> Result<(), String> {
         let server = UnixListener::bind(&path).map_err(|err| format!("bind err: {:?}", err))?;
         while let Ok(conn) = server.incoming().next().ok_or("listen err")? {
             spawn({
@@ -69,7 +65,7 @@ impl Server {
         Ok(())
     }
 
-    fn redirect_stdout_to_unix_stream(stream: UnixStream) -> c_int {
+    fn redirect_stdout_to_unix_stream(stream: &UnixStream) -> c_int {
         let original_fd = unsafe { dup(STDOUT_FILENO) }; // 保存原始stdout的文件描述符
         let ret = original_fd;
 
@@ -84,7 +80,7 @@ impl Server {
         unsafe { close(old) }; // 关闭原始文件描述符
     }
 
-    fn output_thread(path: String) -> Result<(), String> {
+    fn output_thread(path: &String) -> Result<(), String> {
         let mut future: Option<JoinHandle<()>> = None;
         let mut old_conn: Option<UnixStream> = None;
         let server = UnixListener::bind(&path).map_err(|err| format!("bind err: {:?}", err))?;
@@ -98,7 +94,7 @@ impl Server {
 
             let mut conn_copy = conn.try_clone().map_err(|err| err.to_string())?;
 
-            let old_stdout = Server::redirect_stdout_to_unix_stream(conn);
+            let old_stdout = Server::redirect_stdout_to_unix_stream(&conn);
 
             future = Some(spawn(move || {
                 let mut buf = String::new();
@@ -118,8 +114,8 @@ impl Server {
 
         let shell_copy = self.shell.clone();
 
-        let command_thread = spawn(move || Server::cmd_thread(uds_cmd_path, shell_copy));
-        let output_thread = spawn(move || Server::output_thread(uds_output_path));
+        let command_thread = spawn(move || Server::cmd_thread(&uds_cmd_path, &shell_copy));
+        let output_thread = spawn(move || Server::output_thread(&uds_output_path));
 
         let _ = command_thread
             .join()
