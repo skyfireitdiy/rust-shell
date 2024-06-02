@@ -1,5 +1,7 @@
 [workspace]
 members = [ 
-    "server",
+    "shell_client", 
+    "shell_server", 
+    "shell_core",
 ]
 resolver = "2"

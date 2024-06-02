@@ -1,14 +1,13 @@
-use std::io::Read;
-use std::os::fd::AsRawFd;
-use std::os::unix::net::UnixListener;
-use std::os::unix::net::UnixStream;
-use std::thread::spawn;
-use std::thread::JoinHandle;
+use std::{
+    io::Read,
+    os::{
+        fd::AsRawFd,
+        unix::net::{UnixListener, UnixStream},
+    },
+    thread::{spawn, JoinHandle},
+};
 
-use libc::c_int;
-use libc::close;
-use libc::STDOUT_FILENO;
-use libc::{dup, dup2};
+use libc::{c_int, close, dup, dup2, STDOUT_FILENO};
 
 use crate::shell::Shell;
 
@@ -18,39 +17,51 @@ pub struct Server {
     uds_output_path: String,
 }
 
+impl Drop for Server {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_file(&self.uds_cmd_path);
+        let _ = std::fs::remove_file(&self.uds_output_path);
+    }
+}
+
 impl Server {
-    pub fn new(shell_: Shell, uds_path_: String, uds_output_path_: String) -> Server {
+    pub fn new(shell_: Shell, uds_cmd_path_: String, uds_output_path_: String) -> Server {
         Server {
             shell: shell_,
-            uds_cmd_path: uds_path_,
+            uds_cmd_path: uds_cmd_path_,
             uds_output_path: uds_output_path_,
         }
     }
 
     fn handle_cmd_connect(mut conn: UnixStream, shell: Shell) -> Result<(), String> {
-        let mut buf = String::new();
+        let mut buf: [u8; 1024] = [0; 1024];
         loop {
-            conn.read_to_string(&mut buf)
-                .map_err(|err| err.to_string())?;
-            shell.run_command(&buf)?;
+            let sz = conn.read(&mut buf).map_err(|err| err.to_string())?;
+            let s = String::from_utf8(buf[0..sz].to_vec()).map_err(|err| err.to_string())?;
+            println!(
+                "recv: {}",
+                String::from_utf8(buf[0..sz].to_vec()).map_err(|err| err.to_string())?
+            );
+            if let Err(err) = shell.run_command(&s) {
+                println!("Error: {}", err);
+            }
         }
     }
 
     fn cmd_thread(path: String, shell: Shell) -> Result<(), String> {
-        while let Ok(conn) = UnixListener::bind(&path)
-            .map_err(|err| format!("bind err: {:?}", err))?
-            .incoming()
-            .next()
-            .ok_or("listen err")?
-        {
+        let server = UnixListener::bind(&path).map_err(|err| format!("bind err: {:?}", err))?;
+        while let Ok(conn) = server.incoming().next().ok_or("listen err")? {
             spawn({
                 let conn_copy = conn
                     .try_clone()
                     .map_err(|err| format!("clone err: {:?}", err))?;
                 let shell_copy = shell.clone();
                 move || {
-                    let _ = Server::handle_cmd_connect(conn_copy, shell_copy)
-                        .map_err(|err| format!("handle cmd connect err: {:?}", err));
+                    if let Err(err) = Server::handle_cmd_connect(conn_copy, shell_copy)
+                        .map_err(|err| format!("handle cmd connect err: {:?}", err))
+                    {
+                        println!("handle cmd connect err: {}", err);
+                    }
                 }
             });
         }
@@ -76,12 +87,8 @@ impl Server {
     fn output_thread(path: String) -> Result<(), String> {
         let mut future: Option<JoinHandle<()>> = None;
         let mut old_conn: Option<UnixStream> = None;
-        while let Ok(conn) = UnixListener::bind(&path)
-            .map_err(|err| format!("bind err: {:?}", err))?
-            .incoming()
-            .next()
-            .ok_or("listen err")?
-        {
+        let server = UnixListener::bind(&path).map_err(|err| format!("bind err: {:?}", err))?;
+        while let Ok(conn) = server.incoming().next().ok_or("listen err")? {
             if let Some(o) = old_conn.take() {
                 drop(o);
                 future.take().unwrap().join().unwrap();
@@ -120,7 +127,6 @@ impl Server {
         let _ = output_thread
             .join()
             .map_err(|err| format!("run output err: {:?}", err))?;
-
         Ok(())
     }
 }

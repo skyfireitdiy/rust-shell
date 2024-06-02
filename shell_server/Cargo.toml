@@ -1,0 +1,8 @@
+[package]
+name = "shell_server"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+libc = "0.2"
+shell_core={path= "../shell_core"}
