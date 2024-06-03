@@ -55,7 +55,7 @@ impl Client {
         line.split_whitespace().map(|s| s.to_owned()).collect()
     }
 
-    fn pad(&mut self, args: &Vec<Argument>) -> Result<(), String> {
+    fn attach_process(&mut self, args: &Vec<Argument>) -> Result<(), String> {
         if args.len() != 1 {
             return Err(format!("argument number error"));
         }
@@ -95,7 +95,7 @@ impl Client {
         let mut output_channel_copy = self
             .output_channel
             .as_ref()
-            .ok_or("not pad to process")?
+            .ok_or("not attach to process")?
             .try_clone()
             .map_err(|err| err.to_string())?;
 
@@ -117,7 +117,11 @@ impl Client {
 
     fn run_builtin_command(&mut self, cmd: &String, args: &Vec<Argument>) -> Result<(), String> {
         match cmd.as_str() {
-            "pad" => self.pad(&args),
+            "attach" => self.attach_process(&args),
+            "detach" => {
+                self.detach_process();
+                Ok(())
+            }
             "exit" => Self::exit(),
             _ => Err("custom".to_owned()),
         }
@@ -125,12 +129,12 @@ impl Client {
 
     pub fn run_custom_command(&mut self, line: &String) -> Result<(), String> {
         match self.cmd_channel {
-            None => Err("not pad to process".to_owned()),
+            None => Err("not attach to process".to_owned()),
             Some(ref mut cmd_channel) => write_line(cmd_channel, line),
         }
     }
 
-    pub fn npad(&mut self) {
+    pub fn detach_process(&mut self) {
         self.cmd_channel = None;
         self.output_channel = None;
         self.copy_stdout = None;
@@ -145,7 +149,8 @@ impl Client {
         r.set_prompt(DEFAULT_PS1);
         r.set_debug_command_complete_data(vec![
             ("exit".to_owned(), "exit".to_owned()),
-            ("pad".to_owned(), "pad".to_owned()),
+            ("attach".to_owned(), "attach".to_owned()),
+            ("detach".to_owned(), "detach".to_owned()),
         ]);
 
         Ok(())
@@ -173,7 +178,7 @@ impl Client {
                         "custom" => {
                             if let Err(err) = self.run_custom_command(&line) {
                                 println!("Error: {}", err);
-                                self.npad()
+                                self.detach_process()
                             }
                             sleep(Duration::from_millis(10));
                         }
