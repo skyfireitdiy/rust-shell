@@ -1,4 +1,7 @@
-use std::fmt::Display;
+use std::{
+    fmt::Display,
+    io::{Read, Write},
+};
 
 #[derive(Debug)]
 pub enum Argument {
@@ -13,6 +16,31 @@ impl Display for Argument {
             Argument::Int(i) => write!(f, "{}", i),
         }
     }
+}
+
+pub fn read_line<T: Read>(conn: &mut T) -> Result<String, String> {
+    let mut buf = vec![];
+    let mut tmp_buf = [0u8; 4096];
+    loop {
+        let sz = conn.read(&mut tmp_buf).map_err(|err| err.to_string())?;
+        if sz == 0 {
+            return Err("connection closed".to_string());
+        }
+        buf.extend_from_slice(&tmp_buf[0..sz]);
+        if buf.ends_with(&[b'\n']) {
+            break;
+        }
+    }
+
+    Ok(String::from_utf8(buf)
+        .map_err(|err| err.to_string())?
+        .trim()
+        .to_owned())
+}
+
+pub fn write_line<T: Write>(conn: &mut T, line: &String) -> Result<(), String> {
+    conn.write_all((line.to_owned() + "\n").as_bytes())
+        .map_err(|err| err.to_string())
 }
 
 pub fn parse_arguments(input: &str) -> Vec<Argument> {

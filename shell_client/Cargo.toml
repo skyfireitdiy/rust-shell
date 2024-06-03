@@ -4,5 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-rustyline = "14.0.0"
+linefeed = "0.6.0"
 shell_core={path= "../shell_core"}
+regex="^1"
+lazy_static="1.4.0"
+json = "0.12.4"

@@ -22,6 +22,10 @@ impl Shell {
         }
     }
 
+    pub fn get_reg_commands(&self) -> Vec<String> {
+        self.func_map.keys().map(|k| k.to_string()).collect()
+    }
+
     pub fn reg_func(&mut self, name: String, addr: u64) {
         self.func_map.insert(name, addr);
     }
@@ -65,7 +69,10 @@ impl Shell {
                 };
             }
 
-            println!("[begin to excel func {}]", command);
+            println!(
+                "\x1B[34m------------[begin to excel func {}]------------\x1B[0m",
+                command
+            );
             if let Ok(ret) = match argument_int64.len() {
                 0 => call_func!(create_fn_0),
                 1 => call_func!(create_fn_1, 0),
@@ -80,7 +87,10 @@ impl Shell {
                 10 => call_func!(create_fn_10, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9),
                 _ => Err("too many arguments".to_string()),
             } {
-                println!("[end to excel func {}]:{}", command, ret);
+                println!(
+                    "\x1B[35m------------[end to excel func {}]:{}------------\x1B[0m",
+                    command, ret
+                );
             }
             Ok(())
         })

@@ -8,6 +8,7 @@ use std::{
 };
 
 use libc::{c_int, close, dup, dup2, STDOUT_FILENO};
+use shell_core::{read_line, write_line};
 
 use crate::shell::Shell;
 
@@ -34,10 +35,9 @@ impl Server {
     }
 
     fn handle_cmd_connect(mut conn: UnixStream, shell: Shell) -> Result<(), String> {
-        let mut buf: [u8; 1024] = [0; 1024];
+        let _ = write_line(&mut conn, &shell.get_reg_commands().join(" "))?;
         loop {
-            let sz = conn.read(&mut buf).map_err(|err| err.to_string())?;
-            let s = String::from_utf8(buf[0..sz].to_vec()).map_err(|err| err.to_string())?;
+            let s = read_line(&mut conn)?;
             if let Err(err) = shell.run_command(&s) {
                 println!("Error: {}", err);
             }

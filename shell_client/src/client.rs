@@ -1,53 +1,36 @@
-use rustyline::{error::ReadlineError, DefaultEditor};
+use crate::{autocomplete_reader::AutoCompleteReader, sys::get_process_list};
 use shell_core::*;
 use std::{
-    io::Write,
     os::unix::net::UnixStream,
+    sync::{Arc, Mutex},
     thread::{sleep, spawn, JoinHandle},
     time::Duration,
 };
 
 pub struct Client {
-    prefix: String,
     cmd_channel: Option<UnixStream>,
     output_channel: Option<UnixStream>,
     copy_stdout: Option<JoinHandle<()>>,
+    reader: Arc<Mutex<Box<AutoCompleteReader>>>,
 }
+
+static DEFAULT_PS1: &str = "\x1B[33m>> \x1B[0m";
 
 impl Client {
     pub fn new() -> Client {
         Client {
-            prefix: ">> ".to_owned(),
             cmd_channel: None,
             output_channel: None,
             copy_stdout: None,
+            reader: AutoCompleteReader::new().unwrap(),
         }
     }
 
     fn find_process(&self, arg: &Argument) -> Vec<(String, u64)> {
-        let output = std::process::Command::new("ps")
-            .arg("-A")
-            .arg("-o")
-            .arg("pid,comm")
-            .output()
-            .map_err(|err| err.to_string())
-            .expect("ps error");
-
-        let mut result = Vec::new();
-        for line in String::from_utf8(output.stdout)
-            .map_err(|err| err.to_string())
-            .expect("invalid utf8")
-            .lines()
-        {
-            let sp = line.split_whitespace().collect::<Vec<&str>>();
-            if sp.len() != 2 {
-                continue;
-            }
-
-            if let Ok(pid) = sp[0].parse::<u64>() {
-                result.push((sp[1].to_string(), pid));
-            }
-        }
+        let result: Vec<(String, u64)> = get_process_list()
+            .into_iter()
+            .map(|(pid, name)| (name, pid.parse().unwrap()))
+            .collect();
 
         match arg {
             Argument::Str(name) => result
@@ -66,6 +49,10 @@ impl Client {
             format!("/tmp/rust_shell_cmd_{}", pid),
             format!("/tmp/rust_shell_output_{}", pid),
         )
+    }
+
+    fn parse_auto_complete(line: &str) -> Vec<String> {
+        line.split_whitespace().map(|s| s.to_owned()).collect()
     }
 
     fn pad(&mut self, args: &Vec<Argument>) -> Result<(), String> {
@@ -91,6 +78,20 @@ impl Client {
         self.output_channel =
             Some(UnixStream::connect(&output_path).map_err(|err| err.to_string())?);
 
+        if let Some(c) = &self.cmd_channel {
+            self.reader
+                .lock()
+                .map_err(|err| err.to_string())?
+                .append_debug_command_complete_data(
+                    Client::parse_auto_complete(&read_line(
+                        &mut c.try_clone().map_err(|err| err.to_string())?,
+                    )?)
+                    .into_iter()
+                    .map(|x| (x.clone(), x.clone()))
+                    .collect(),
+                )
+        }
+
         let mut output_channel_copy = self
             .output_channel
             .as_ref()
@@ -102,7 +103,10 @@ impl Client {
             let _ = std::io::copy(&mut output_channel_copy, &mut std::io::stdout());
         }));
 
-        self.prefix = format!("{} >> ", pids[0].0);
+        self.reader
+            .lock()
+            .map_err(|err| err.to_string())?
+            .set_prompt(format!("\x1B[32m{} >> \x1B[0m", pids[0].0).as_str());
 
         Ok(())
     }
@@ -122,9 +126,7 @@ impl Client {
     pub fn run_custom_command(&mut self, line: &String) -> Result<(), String> {
         match self.cmd_channel {
             None => Err("not pad to process".to_owned()),
-            Some(ref mut cmd_channel) => cmd_channel
-                .write_all(line.as_bytes())
-                .map_err(|err| err.to_string()),
+            Some(ref mut cmd_channel) => write_line(cmd_channel, line),
         }
     }
 
@@ -132,43 +134,53 @@ impl Client {
         self.cmd_channel = None;
         self.output_channel = None;
         self.copy_stdout = None;
-        self.prefix = ">> ".to_owned();
+        self.reader
+            .lock()
+            .expect("lock reader failed")
+            .set_prompt(DEFAULT_PS1);
+    }
+
+    fn init_reader(&mut self) -> Result<(), String> {
+        let mut r = self.reader.lock().map_err(|err| err.to_string())?;
+        r.set_prompt(DEFAULT_PS1);
+        r.set_debug_command_complete_data(vec![
+            ("exit".to_owned(), "exit".to_owned()),
+            ("pad".to_owned(), "pad".to_owned()),
+        ]);
+
+        Ok(())
     }
 
     pub fn run(&mut self) -> Result<(), String> {
-        let mut editor = DefaultEditor::new().map_err(|err| err.to_string())?;
-
+        self.init_reader()?;
         loop {
-            match editor.readline(&self.prefix) {
-                Ok(line) => {
-                    if line.is_empty() {
-                        continue;
-                    }
-                    let _ = editor.add_history_entry(line.as_str());
-                    if let Some((cmd, args)) = split_command(line.trim()) {
-                        if let Err(err) = self.run_builtin_command(&cmd, &parse_arguments(&args)) {
-                            match err.as_str() {
-                                "exit" => break,
-                                "custom" => {
-                                    if let Err(err) = self.run_custom_command(&line) {
-                                        println!("Error: {}", err);
-                                        self.npad()
-                                    }
-                                    sleep(Duration::from_millis(10));
-                                }
-                                _ => {
-                                    println!("Error: {}", err);
-                                }
+            let line: String;
+            {
+                line = self
+                    .reader
+                    .lock()
+                    .expect("lock reader failed")
+                    .read()
+                    .expect("read failed");
+            }
+            if line.is_empty() {
+                continue;
+            }
+            if let Some((cmd, args)) = split_command(line.trim()) {
+                if let Err(err) = self.run_builtin_command(&cmd, &parse_arguments(&args)) {
+                    match err.as_str() {
+                        "exit" => break,
+                        "custom" => {
+                            if let Err(err) = self.run_custom_command(&line) {
+                                println!("Error: {}", err);
+                                self.npad()
                             }
+                            sleep(Duration::from_millis(10));
+                        }
+                        _ => {
+                            println!("Error: {}", err);
                         }
                     }
-                }
-                Err(ReadlineError::Interrupted) | Err(ReadlineError::Eof) => {
-                    continue;
-                }
-                Err(err) => {
-                    println!("Error: {:?}", err);
-                    break;
                 }
             }
         }
