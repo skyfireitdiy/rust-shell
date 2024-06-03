@@ -1,5 +1,5 @@
 //! 支持自动完成的读取器，输入过程中使用tab可以出发自动完成
-use crate::completer::UshellCompleter;
+use crate::completer::ShellCompleter;
 use core::time::Duration;
 use linefeed::{terminal::DefaultTerminal, Interface, ReadResult};
 use std::sync::{Arc, Mutex};
@@ -10,7 +10,7 @@ use std::thread::sleep;
 /// - completer 自动完成器
 pub struct AutoCompleteReader {
     interface: Interface<DefaultTerminal>,
-    completer: Arc<UshellCompleter>,
+    completer: Arc<ShellCompleter>,
 }
 
 impl AutoCompleteReader {
@@ -66,7 +66,7 @@ impl AutoCompleteReader {
     pub fn new() -> Result<Arc<Mutex<Box<AutoCompleteReader>>>, String> {
         let mut ret = Box::<AutoCompleteReader>::new(AutoCompleteReader {
             interface: Interface::new("ushell-rust").expect("create interface failed"),
-            completer: UshellCompleter::new(),
+            completer: ShellCompleter::new(),
         });
 
         ret.set_prompt(">> ");

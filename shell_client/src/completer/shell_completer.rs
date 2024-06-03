@@ -5,7 +5,7 @@ use std::{
 };
 
 use crate::{
-    completer::{Completer, PadCommandCompleter, PathCompleter},
+    completer::{Completer, AttachCommandCompleter, PathCompleter},
     tools,
 };
 
@@ -14,12 +14,12 @@ use linefeed::{
     DefaultTerminal, Prompter,
 };
 
-pub struct UshellCompleter {
+pub struct ShellCompleter {
     pub autocomplete_data: Mutex<Cell<Vec<(String, String)>>>,
     pub completer_chain: Vec<(fn(&str, &str) -> bool, Box<dyn Completer>)>,
 }
 
-impl linefeed::complete::Completer<DefaultTerminal> for UshellCompleter {
+impl linefeed::complete::Completer<DefaultTerminal> for ShellCompleter {
     fn complete(
         &self,
         word: &str,
@@ -44,7 +44,7 @@ impl linefeed::complete::Completer<DefaultTerminal> for UshellCompleter {
     }
 }
 
-impl UshellCompleter {
+impl ShellCompleter {
     pub fn debug_command_complete(&self, word: &str) -> Option<Vec<Completion>> {
         for cmp in [
             tools::is_prefix,
@@ -89,10 +89,10 @@ impl UshellCompleter {
         self.set_autocomplete_data(data);
     }
 
-    pub fn new() -> Arc<UshellCompleter> {
-        Arc::new(UshellCompleter {
+    pub fn new() -> Arc<ShellCompleter> {
+        Arc::new(ShellCompleter {
             autocomplete_data: Mutex::new(Cell::new(Vec::new())),
-            completer_chain: crate::reg_completer!(PadCommandCompleter, PathCompleter),
+            completer_chain: crate::reg_completer!(AttachCommandCompleter, PathCompleter),
         })
     }
 }

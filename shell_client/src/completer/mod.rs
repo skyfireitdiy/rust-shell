@@ -1,11 +1,11 @@
 //! 完成器抽象
-mod pad_completer;
+mod attach_completer;
 mod path_completer;
-mod ushell_completer;
+mod shell_completer;
 
-pub use pad_completer::*;
+pub use attach_completer::*;
 pub use path_completer::*;
-pub use ushell_completer::*;
+pub use shell_completer::*;
 
 use linefeed::terminal::DefaultTerminal;
 use linefeed::Completion;

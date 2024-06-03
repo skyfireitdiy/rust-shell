@@ -7,6 +7,7 @@ use std::{
     time::Duration,
 };
 
+
 pub struct Client {
     cmd_channel: Option<UnixStream>,
     output_channel: Option<UnixStream>,
@@ -115,17 +116,7 @@ impl Client {
         Err("exit".to_owned())
     }
 
-    fn run_builtin_command(&mut self, cmd: &String, args: &Vec<Argument>) -> Result<(), String> {
-        match cmd.as_str() {
-            "attach" => self.attach_process(&args),
-            "detach" => {
-                self.detach_process();
-                Ok(())
-            }
-            "exit" => Self::exit(),
-            _ => Err("custom".to_owned()),
-        }
-    }
+
 
     pub fn run_custom_command(&mut self, line: &String) -> Result<(), String> {
         match self.cmd_channel {
@@ -144,6 +135,7 @@ impl Client {
             .set_prompt(DEFAULT_PS1);
     }
 
+
     fn init_reader(&mut self) -> Result<(), String> {
         let mut r = self.reader.lock().map_err(|err| err.to_string())?;
         r.set_prompt(DEFAULT_PS1);
@@ -154,6 +146,19 @@ impl Client {
         ]);
 
         Ok(())
+    }
+
+
+    fn run_builtin_command(&mut self, cmd: &String, args: &Vec<Argument>) -> Result<(), String> {
+        match cmd.as_str() {
+            "attach" => self.attach_process(&args),
+            "detach" => {
+                self.detach_process();
+                Ok(())
+            }
+            "exit" => Self::exit(),
+            _ => Err("custom".to_owned()),
+        }
     }
 
     pub fn run(&mut self) -> Result<(), String> {
@@ -193,3 +198,4 @@ impl Client {
         Ok(())
     }
 }
+

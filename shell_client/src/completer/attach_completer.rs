@@ -3,9 +3,9 @@ use linefeed::{complete::Completion, prompter::Prompter, terminal::DefaultTermin
 
 use crate::{completer::Completer, sys};
 
-pub struct PadCommandCompleter;
+pub struct AttachCommandCompleter;
 
-impl linefeed::complete::Completer<DefaultTerminal> for PadCommandCompleter {
+impl linefeed::complete::Completer<DefaultTerminal> for AttachCommandCompleter {
     fn complete(
         &self,
         word: &str,
@@ -17,16 +17,16 @@ impl linefeed::complete::Completer<DefaultTerminal> for PadCommandCompleter {
     }
 }
 
-impl Completer for PadCommandCompleter {
+impl Completer for AttachCommandCompleter {
     fn filter(_w: &str, b: &str) -> bool {
         b.split_whitespace()
             .map(|x| x.trim().to_owned())
             .next()
             .unwrap_or("".to_owned())
-            == "pad"
+            == "attach"
     }
 
     fn new() -> Box<dyn Completer> {
-        Box::new(PadCommandCompleter)
+        Box::new(AttachCommandCompleter)
     }
 }
