@@ -4,5 +4,5 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-linefeed = "0.6.0"
+linefeed = "*"
 shell_core={path= "../shell_core"}
