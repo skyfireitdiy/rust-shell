@@ -312,7 +312,7 @@ name = "shell_client"
 version = "0.1.0"
 dependencies = [
  "linefeed",
- "shell_core",
+ "shell_core 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -320,11 +320,17 @@ name = "shell_core"
 version = "0.1.0"
 
 [[package]]
+name = "shell_core"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5c1e9319388ca337ababce530e6114c460c82b22a1c525975b7e4abf9eb29fce"
+
+[[package]]
 name = "shell_server"
 version = "0.1.0"
 dependencies = [
  "libc",
- "shell_core",
+ "shell_core 0.1.0",
 ]
 
 [[package]]

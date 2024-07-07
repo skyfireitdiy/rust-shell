@@ -6,5 +6,5 @@ description = "Rust进程调试工具，封装了与Unix域套接字通信、命
 license = "MIT"
 
 [dependencies]
-linefeed = "*"
-shell_core={path= "../shell_core"}
+linefeed = "0.6"
+shell_core = "0.1"
