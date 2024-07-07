@@ -1,6 +1,6 @@
 [package]
 name = "shell_core"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "一个用于处理命令行参数解析和网络通信的模块，包括从网络连接读取和写入文本行的功能，以及解析字符串形式的命令行参数到枚举类型 Argument 的功能。"
 license = "MIT"
