@@ -330,7 +330,7 @@ name = "shell_server"
 version = "0.1.0"
 dependencies = [
  "libc",
- "shell_core 0.1.0",
+ "shell_core 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
