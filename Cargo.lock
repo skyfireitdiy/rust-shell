@@ -327,7 +327,7 @@ checksum = "5c1e9319388ca337ababce530e6114c460c82b22a1c525975b7e4abf9eb29fce"
 
 [[package]]
 name = "shell_server"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "libc",
  "shell_core 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",

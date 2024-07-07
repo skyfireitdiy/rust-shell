@@ -12,13 +12,22 @@ use shell_core::{read_line, write_line};
 
 use crate::shell::Shell;
 
+/// 一个服务器，侦听传入的 Unix 域套接字 (UDS) 连接并处理命令。
 pub struct Server {
+    /// 要在服务器上执行的 shell 实例。
     shell: Shell,
+
+    /// Unix 域套接字 (UDS) 路径，用于侦听命令。
     uds_cmd_path: String,
+
+    /// Unix 域套接字 (UDS) 路径，用于侦听输出。
     uds_output_path: String,
 }
 
+/// 实现 Drop trait，以便在 Server 实例被丢弃时删除 Unix 域套接字 (UDS) 文件。
 impl Drop for Server {
+    /// 当 Server 实例被丢弃时，此函数将被调用。
+    /// 它将删除 `uds_cmd_path` 和 `uds_output_path` 所指向的 Unix 域套接字 (UDS) 文件。
     fn drop(&mut self) {
         let _ = std::fs::remove_file(&self.uds_cmd_path);
         let _ = std::fs::remove_file(&self.uds_output_path);
@@ -26,6 +35,17 @@ impl Drop for Server {
 }
 
 impl Server {
+    /// 创建一个新的 Server 实例。
+    ///
+    /// # Arguments
+    ///
+    /// * `shell_` - 要在服务器上执行的 shell 实例。
+    /// * `uds_cmd_path_` - Unix 域套接字 (UDS) 路径，用于侦听命令。
+    /// * `uds_output_path_` - Unix 域套接字 (UDS) 路径，用于侦听输出。
+    ///
+    /// # Returns
+    ///
+    /// 一个新的 Server 实例。
     pub fn new(shell_: Shell, uds_cmd_path_: String, uds_output_path_: String) -> Server {
         Server {
             shell: shell_,
@@ -108,6 +128,15 @@ impl Server {
         Ok(())
     }
 
+    /// 在 Server 实例上运行命令并处理输出。
+    ///
+    /// # Returns
+    ///
+    /// 运行结果。
+    ///
+    /// # Errors
+    ///
+    /// 如果命令线程或输出线程返回错误，则返回包含该错误的 Result。
     pub fn run(&mut self) -> Result<(), String> {
         let uds_cmd_path = self.uds_cmd_path.clone();
         let uds_output_path = self.uds_output_path.clone();

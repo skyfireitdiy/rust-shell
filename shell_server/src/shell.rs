@@ -22,20 +22,54 @@ impl Default for Shell {
 }
 
 impl Shell {
+    /// 创建一个新的 Shell 实例。
+    ///
+    /// # 示例
+    ///
+    /// ```rust,no_run
+    /// use std::collections::HashMap;
+    /// use shell_server::{Shell};
+    ///
+    /// fn main() {
+    ///     let shell = Shell::new();
+    ///     // 接下来可以添加函数并使用 shell 进行操作
+    /// }
+    /// ```
     pub fn new() -> Shell {
         Shell {
             func_map: HashMap::new(),
         }
     }
 
+    /// 获取 shell 环境中已注册的命令列表。
+    ///
+    /// # 返回值
+    ///
+    /// 一个包含所有已注册命令名称的字符串向量。
     pub fn get_reg_commands(&self) -> Vec<String> {
         self.func_map.keys().map(|k| k.to_string()).collect()
     }
 
+    /// 向 shell 环境中注册一个函数。
+    ///
+    /// # 参数
+    ///
+    /// - `name`: 要注册的函数的名称。
+    /// - `addr`: 要注册的函数的地址。
+    ///
     pub fn reg_func(&mut self, name: String, addr: u64) {
         self.func_map.insert(name, addr);
     }
 
+    /// 运行 shell 环境中的命令。
+    ///
+    /// # 参数
+    ///
+    /// - `command_line`: 要运行的命令行。
+    ///
+    /// # 返回值
+    ///
+    /// 运行命令的结果。
     pub fn run_command(&self, command_line: &String) -> Result<(), String> {
         panic::catch_unwind(|| {
             let (command, arguments) =

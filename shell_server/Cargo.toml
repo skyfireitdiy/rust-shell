@@ -1,6 +1,6 @@
 [package]
 name = "shell_server"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "这是一个Rust编写的Unix域套接字服务器，用于从远端接收命令并执行。它支持命令执行、输出重定向，并提供了一个多线程环境来处理客户端请求。"
 license = "MIT"
