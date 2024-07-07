@@ -2,6 +2,8 @@
 name = "shell_client"
 version = "0.1.0"
 edition = "2021"
+description = "Rust进程调试工具，封装了与Unix域套接字通信、命令行自动补全、以及内置命令处理等功能。Client 可以连接到一个进程，发送自定义命令，并处理来自该进程的输出。实现了命令行读取、命令解析、进程查找、自动补全、命令执行等功能，并提供了一个循环来不断读取用户输入并执行相应的命令"
+license = "MIT"
 
 [dependencies]
 linefeed = "*"
