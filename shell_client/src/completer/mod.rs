@@ -72,7 +72,7 @@ pub fn gen_autocomplete_item(
     for op in ops {
         let col: Vec<Completion> = cmp_data
             .iter()
-            .filter_map(|x| match op(&x, &word) {
+            .filter_map(|x| match op(x, word) {
                 0 => Some(Completion {
                     completion: x.0.clone(),
                     display: Some(format!("{}({})", x.0, x.1)),
@@ -91,5 +91,5 @@ pub fn gen_autocomplete_item(
         }
         return Some(col);
     }
-    return None;
+    None
 }

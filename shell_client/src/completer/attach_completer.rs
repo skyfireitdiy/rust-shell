@@ -13,7 +13,7 @@ impl linefeed::complete::Completer<DefaultTerminal> for AttachCommandCompleter {
         _start: usize,
         _end: usize,
     ) -> Option<Vec<Completion>> {
-        crate::completer::gen_autocomplete_item(&sys::get_process_list(), &word)
+        crate::completer::gen_autocomplete_item(&sys::get_process_list(), word)
     }
 }
 

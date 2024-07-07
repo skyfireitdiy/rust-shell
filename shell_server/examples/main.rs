@@ -7,7 +7,7 @@ fn print_hello() {
 
 fn add_two(a: i64, b: i64) -> i64 {
     println!("{} + {} = {}", a, b, a + b);
-    return a + b;
+    a + b
 }
 
 fn print_str(s: &String) {
@@ -26,11 +26,11 @@ fn add_seven(a: i64, b: i64, c: i64, d: i64, e: i64, f: i64, g: i64) -> i64 {
         g,
         a + b + c + d + e + f + g
     );
-    return a + b + c + d + e + f + g;
+    a + b + c + d + e + f + g
 }
 
 fn get_self_pid() -> u64 {
-    return std::process::id() as u64;
+    std::process::id() as u64
 }
 
 fn main() {

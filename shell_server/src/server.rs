@@ -35,7 +35,7 @@ impl Server {
     }
 
     fn handle_cmd_connect(mut conn: UnixStream, shell: Shell) -> Result<(), String> {
-        let _ = write_line(&mut conn, &shell.get_reg_commands().join(" "))?;
+        write_line(&mut conn, &shell.get_reg_commands().join(" "))?;
         loop {
             let s = read_line(&mut conn)?;
             if let Err(err) = shell.run_command(&s) {
@@ -45,7 +45,7 @@ impl Server {
     }
 
     fn cmd_thread(path: &String, shell: &Shell) -> Result<(), String> {
-        let server = UnixListener::bind(&path).map_err(|err| format!("bind err: {:?}", err))?;
+        let server = UnixListener::bind(path).map_err(|err| format!("bind err: {:?}", err))?;
         while let Ok(conn) = server.incoming().next().ok_or("listen err")? {
             spawn({
                 let conn_copy = conn
@@ -83,7 +83,7 @@ impl Server {
     fn output_thread(path: &String) -> Result<(), String> {
         let mut future: Option<JoinHandle<()>> = None;
         let mut old_conn: Option<UnixStream> = None;
-        let server = UnixListener::bind(&path).map_err(|err| format!("bind err: {:?}", err))?;
+        let server = UnixListener::bind(path).map_err(|err| format!("bind err: {:?}", err))?;
         while let Ok(conn) = server.incoming().next().ok_or("listen err")? {
             if let Some(o) = old_conn.take() {
                 drop(o);

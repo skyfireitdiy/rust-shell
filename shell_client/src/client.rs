@@ -17,6 +17,12 @@ pub struct Client {
 
 static DEFAULT_PS1: &str = "\x1B[33m>> \x1B[0m";
 
+impl Default for Client {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Client {
     pub fn new() -> Client {
         Client {
@@ -58,12 +64,12 @@ impl Client {
 
     fn attach_process(&mut self, args: &Vec<Argument>) -> Result<(), String> {
         if args.len() != 1 {
-            return Err(format!("argument number error"));
+            return Err("argument number error".to_string());
         }
 
         let pids = self.find_process(&args[0]);
         if pids.is_empty() {
-            return Err(format!("process not found"));
+            return Err("process not found".to_string());
         }
         if pids.len() != 1 {
             return Err(format!("multiple process found: \n{}", {
@@ -151,7 +157,7 @@ impl Client {
 
     fn run_builtin_command(&mut self, cmd: &String, args: &Vec<Argument>) -> Result<(), String> {
         match cmd.as_str() {
-            "attach" => self.attach_process(&args),
+            "attach" => self.attach_process(args),
             "detach" => {
                 self.detach_process();
                 Ok(())

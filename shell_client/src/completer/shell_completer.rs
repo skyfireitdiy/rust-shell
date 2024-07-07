@@ -29,18 +29,9 @@ impl linefeed::complete::Completer<DefaultTerminal> for ShellCompleter {
     ) -> Option<Vec<Completion>> {
         self.completer_chain
             .iter()
-            .filter(|x| x.0(&word.to_string(), &prompter.buffer().trim().to_string()))
-            .find_map(|c| match c.1.complete(word, prompter, start, end) {
-                Some(x) => {
-                    if !x.is_empty() {
-                        Some(x)
-                    } else {
-                        None
-                    }
-                }
-                None => None,
-            })
-            .map_or_else(|| self.debug_command_complete(word), |x| Some(x))
+            .filter(|x| x.0(word, prompter.buffer().trim()))
+            .find_map(|c| c.1.complete(word, prompter, start, end).filter(|x| !x.is_empty()))
+            .map_or_else(|| self.debug_command_complete(word), Some)
     }
 }
 
@@ -64,7 +55,7 @@ impl ShellCompleter {
                     suffix: Suffix::Default,
                 })
                 .collect::<Vec<Completion>>();
-            if ret.len() != 0 {
+            if !ret.is_empty() {
                 return Some(ret);
             }
         }

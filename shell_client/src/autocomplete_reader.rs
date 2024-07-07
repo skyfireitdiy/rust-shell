@@ -25,13 +25,13 @@ impl AutoCompleteReader {
                 if !line.trim().is_empty() {
                     self.interface.add_history(line.clone());
                 }
-                return Ok(line);
+                Ok(line)
             }
             ReadResult::Eof => {
-                return Ok("".to_owned());
+                Ok("".to_owned())
             }
             ReadResult::Signal(s) => {
-                return Err(format!("recv signal {:?}", s));
+                Err(format!("recv signal {:?}", s))
             }
         }
     }
@@ -42,7 +42,7 @@ impl AutoCompleteReader {
         self.completer.append_complete_data(data);
     }
     pub fn set_prompt(&mut self, p: &str) {
-        self.interface.set_prompt(&p).expect("set prompt failed");
+        self.interface.set_prompt(p).expect("set prompt failed");
     }
 }
 

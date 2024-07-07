@@ -84,12 +84,10 @@ pub fn parse_arguments(input: &str) -> Vec<Argument> {
             current_arg.remove(current_arg.len() - 1);
             current_arg.remove(0);
             result.push(Argument::Str(current_arg));
+        } else if let Ok(num) = current_arg.parse::<i64>() {
+            result.push(Argument::Int(num));
         } else {
-            if let Ok(num) = current_arg.parse::<i64>() {
-                result.push(Argument::Int(num));
-            } else {
-                result.push(Argument::Str(current_arg));
-            }
+            result.push(Argument::Str(current_arg));
         }
     }
 

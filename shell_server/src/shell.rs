@@ -15,6 +15,12 @@ macro_rules! reg_shell_cmd {
     };
 }
 
+impl Default for Shell {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Shell {
     pub fn new() -> Shell {
         Shell {
